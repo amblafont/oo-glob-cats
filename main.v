@@ -127,6 +127,34 @@ CoFixpoint has_coh_has_id {B : GSet}{idB : has_id B}(G : GSet_on B)(cohG : has_c
   |}.
 Existing Instance has_coh_has_id.
 
-Theorem truc {B : GSet}{idB : has_id B} (G : GSet_on B)(cohG : has_coh G)
-        (b1 : B)(b2 : B)
+
+
+
+(* Is it contractible *)
+CoInductive is_contractible {B : GSet}(G : GSet_on B) :=
+ {
+    contr0 :     forall  (b1 : B)(b2 : B)(g1 : G b1)(g2 : G b2)
+                    (b12 : hom b1 b2) , hom_on g1 g2 b12 ;
+    contrS : forall (b1 b2 : B) (g1 : G b1)(g2 : G b2),
+      is_contractible (B := hom b1 b2)(hom_on g1 g2)
+ }.
+
+(* Hypothèses nécessaires pour montrer la contractibilité *)
+Class has_all_necessary_hyp {B : GSet}(G : GSet_on B) :=
+{ has_idB :> has_id B ;
+  has_compB :> has_comp B ;
+  has_compG :> has_comp_on G ;
+  has_cohG :> has_coh G ;
+  (* + une hypothèse (manquante) qui dit que les morphismes sont des compositions
+     de flèches.
+   *)
+}.
+
+Instance passer_au_niveau_sup
+        {B : GSet}(G : GSet_on B) (is_nice : has_all_necessary_hyp G) 
+        (b1 b2 : B) (g1 : G b1)(g2 : G b2):
+           has_all_necessary_hyp (B := hom b1 b2) (hom_on g1 g2).
+Proof.
+  unshelve esplit; eauto with typeclass_instances.
+Qed.
 
