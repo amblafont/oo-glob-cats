@@ -447,6 +447,83 @@ Context (uniVTX : forall (Z : GSet_on TX)
                     (h: @GSet_on_Mor TX TX (id_Mor TX) X Z),
             has_comp_on Z -> has_id_on Z -> section Z ).
 
+(* autre principe de recurrence (cf mail) *)
+Section nouveau_principe.
+  Context (Z : forall (t1 t2 : TX), GSet_on (hom t1 t2)).
+  Context (morZ : forall (t1 t2 : TX)(x1 : X t1)(x2 : X t2),
+              GSet_on_Mor
+                                    (* (hom t1 t2)(hom t1 t2) *)
+                                    (id_Mor (hom t1 t2))
+                                            (hom_on x1 x2) (Z t1 t2)
+          ).
+  Context (compZ : forall t1 t2, has_comp_on (Z t1 t2))
+          (comp0Z : forall t1 t2 t3, ((Z t1 t2 * Z t2 t3) ⇒[ comp0] (Z t1 t3))%GO)
+          (idZ : forall t1 t2, has_id_on (Z t1 t2))
+          (id0Z : forall t, Z t t (id0 t)).
+
+  Definition Zup : GSet_on TX :=
+    {|
+      ob_on := fun _ => unit ;
+      hom_on := fun t1 t2 _ _ => Z t1 t2
+    |}.
+
+  Lemma section_Zup : section Zup.
+  Proof.
+    apply uniVTX.
+    - exact {| ob_on_mor := fun  _ _ => (tt : Zup (id_Mor TX _)) ;
+                         hom_on_mor := morZ
+                      |}.
+    - split.
+      + cbn.
+        intros.
+        apply comp0Z.
+      + cbn.
+        intros.
+        apply compZ.
+    - split.
+      + intros.
+        apply id0Z.
+      + intros.
+        apply idZ.
+        Defined.
+
+  Lemma section_dep (t1 t2 : TX) : section (Z t1 t2).
+    apply (homs (section_Zup)).
+  Defined.
+  End nouveau_principe.
+
+CoInductive GSet_on_on {B : GSet}(G : GSet_on B) :=
+  { ob_on_on :> forall b, G b -> Type ;
+    hom_on_on : forall a b (g1 : G a) (g2 : G b) ,
+                  ob_on_on g1 -> ob_on_on g2 ->
+                  GSet_on_on (B := hom a b)(hom_on (g := G) g1 g2) }.
+
+CoFixpoint Pi {B : GSet}{H : GSet_on B}(G : GSet_on_on H) : GSet_on B.
+refine ({| ob_on := fun b => forall (h : H b), G b h ;
+           hom_on := fun b1 b2 h1 h2 => _
+        |}).
+cbn in h1, h2.
+unshelve eapply Pi.
+Abort.
+
+CoFixpoint PiI {B : GSet}{I : Type}
+           {H : I -> GSet_on B}(G : forall i, GSet_on_on (H i)) : GSet_on B.
+refine ({| ob_on := fun b => forall i (h : H i b), G i b h ;
+           hom_on := fun b1 b2 h1 h2 =>
+                       PiI _ ({ i : I & (H i b1 * H i b2)%type})
+                           (fun i12 => hom_on
+                                      (fst (projT2 i12))
+                                      (snd (projT2 i12))
+                           )
+                           _
+        |}).
+intro i12.
+cbn in h1,h2.
+eapply hom_on_on.
+Abort.
+exact (hom_on)
+
+
 
 (* Goal: prove that WX is fully contractible on TX *)
 
