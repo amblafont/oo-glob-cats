@@ -280,8 +280,8 @@ CoInductive contractible {B : GSet}(G : GSet_on B) :=
   { obc :> forall b, G b ;
     homc : forall (b b' : B)
              (g : G b)(g' : G b'),
-         contractible (B := hom b b')(hom_on g g')
-  }.
+         contractible (B := hom b b')(hom_on g g') }.
+
 
 
 (* CoFixpoint is_contractible' {B : GSet} *)
@@ -314,128 +314,28 @@ CoInductive section {B : GSet}(G : GSet_on B) :=
          section (B := hom b b')(hom_on g g')
   }.
 
-CoInductive fami_on {B : GSet} (G : GSet_on B) :=
-  { obfa:> B -> Type ;
-     (* If : B -> Type ; *)
-     homfa : forall (b1 b2 : B) (g1 : G b1)  (g2 : G b2) ,
-                            @fami_on (hom b1 b2) (hom_on g1 g2)
-  }.
-CoInductive fami_section {B : GSet} (H : GSet_on B)(G : fami_on H) :=
-  { obfas : forall b, G b;
-    homfas : forall b1 b2  i1 i2 ,
-        @fami_section
-          (hom b1 b2)
-          (hom_on (g := H) i1 i2)
-          (homfa G i1 i2)
+CoInductive GSet_on_on {B : GSet}(G : GSet_on B) :=
+  { ob_on_on :> forall b, G b -> Type ;
+    hom_on_on : forall a b (g1 : G a) (g2 : G b) ,
+                  ob_on_on g1 -> ob_on_on g2 ->
+                  GSet_on_on (B := hom a b)(hom_on (g := G) g1 g2) }.
+
+CoInductive sec_Pi {B : GSet}{G : GSet_on B}(H : GSet_on_on G) :=
+  { sPi_ob :> forall b (g : G b), H _ g ;
+    sPi_hom : forall b1 b2 (g1 : G b1)(g2 : G b2)(h1 : H _ g1)(h2 : H _ g2),
+        sec_Pi (B := hom b1 b2)(G := hom_on g1 g2) (hom_on_on h1 h2)
   }.
 
-CoFixpoint contractible_fami (B : GSet) (G : GSet_on B) : fami_on G
-  :=
-   {| obfa := fun (z : B) => (ob_on G z);
-      homfa := fun b b' i1 i2 =>
-                contractible_fami (B := hom (g := B) b b')
-                                    (hom_on (g := G) i1 i2)
-         |}.
+CoInductive has_comp_pi {B : GSet}{G : GSet_on B}(H : GSet_on_on G)
+            {compB : has_comp B}
+            (* {compG : has_comp_on G}  *):=
+  { comp_pi0 : forall (b1 b2 b3 : B)
+                 (u1 : hom b1 b2)(u2 : hom b2 b3),
+      (* maintenant il faut une section sur b1, b2, b3, u1, u2 *)
+      (forall (g : G b1), H _ g ) -> (forall (g : G b2), H _ g ) ->
+      (forall (g : G b3), H _ g )
+  }
 
-CoFixpoint contractible_fami_contr (B : GSet)(G : GSet_on B)
-      (sec : fami_section (contractible_fami G)) : contractible G.
-Proof.
-  split.
-  - apply sec.
-  - intros.
-    apply contractible_fami_contr.
-    assert (h := homfas sec).
-    unshelve eapply h.
-Defined.
-
-CoFixpoint prods_fami_on {B : GSet }{I : Type}(H : I ->  GSet_on B)
-           (Gs : forall i, fami_on (H i)) :
-  fami_on (prods_GSet_on H).
-  unshelve refine (
-  {| obfa := fun b => forall i, Gs i b ;
-     (* If := fun b => *)
-     (*         (* { i & If i b } ; *) *)
-     (*         forall i, If i b ; *)
-     homfa := fun b b' i1 i2 => _
-               (* prods_fam_on' _ _ _  *)
-                             (* (fun i => homf'  (p i) (p' i) (i1 _) (i2 _)) *)
-  |}).
-  (* cbn in p, p'. *)
-  apply prods_fami_on.
-  - intro i; apply (@homfa _ _ (Gs i)); auto.
-    Defined.
-
-
-CoFixpoint fami_GSet_on {B : GSet}(H : GSet_on B)
-           (G :  fami_on H) : GSet_on B.
-Proof.
-  refine ({| ob_on := fun b => G  b |}).
-  intros b1 b2 g1 g2.
-  unshelve eapply fami_GSet_on.
-  + shelve.
-  + assert (h := @homfa _ _ G b1 b2 ).
-    eapply (prods_fami_on (I := H b1 * H b2)%type).
-    exact (fun i => h (fst i)(snd i)).
-Defined.
-
-CoFixpoint fami_GSet_on_I {B : GSet}{I : Type}(H :  I -> GSet_on B)
-           (G : forall i, fami_on (H i)) : GSet_on B.
-Proof.
-  refine ({| ob_on := fun b => forall i, G i b |}).
-  intros b1 b2 g1 g2.
-  assert (h := fun i => @homfa _ _ (G i) b1 b2 ).
-  eapply (fami_GSet_on_I _ ({ i : I & (H i b1 * H i b2)%type})).
-  + exact (fun ih12 => h (projT1 ih12) (fst (projT2 ih12))(snd (projT2 ih12))).
-Defined.
-
-CoFixpoint yop' {B : GSet}{I J : Type}(ff : J -> I)
-           (H : I -> GSet_on B)(G : forall i, fami_on (H i))
-  (sec : section
-        (fami_GSet_on_I G) 
-           (* (fun i : I =>  *)
-           (*  homfa (G (projT1 ih12)) (fst (projT2 ih12)) (snd (projT2 ih12)))) *))
-  : section (fami_GSet_on_I (fun j : J => G (ff j))).
-Proof.
-  unshelve esplit.
-  - cbn.
-    intros.
-    apply sec.
-  - cbn.
-    intros b b'.
-    cbn.
-    assert (h := homs sec b b').
-    cbn in h.
-    revert h.
-    specialize (yop' (hom b b') {i : I & (H i b * H i b')%type} {i : J & (H (ff i) b * H (ff i) b')%type}).
-    specialize (yop' (fun i12 => existT _ (ff (projT1 i12)) (projT2 i12)  )).
-    set (G' :=
-           (fun ih12 : {i : I & (H i b * H i b')%type} =>
-              homfa (G (projT1 ih12)) (fst (projT2 ih12)) (snd (projT2 ih12)))).
-
-    unshelve eset (H' := _ : ( {i : I & (H i b * H i b')%type} -> GSet_on (hom b b'))).
-    apply yop'.
-Defined.
-
-CoFixpoint fami_gset_section_gset_I {B : GSet}{I : Type}
-           (H : I -> GSet_on B)(G : forall i, fami_on (H i))
-  (sec : section (fami_GSet_on_I (H := H) G)) : fami_section (prods_fami_on G).
-Proof.
-  split.
-  - intro b.
-    cbn.
-    apply sec.
-  - intros b1 b2 i1 i2.
-    cbn.
-    apply fami_gset_section_gset_I.
-    assert (h := @homs _  _ sec b1 b2).
-    cbn zeta in h.
-    cbn in h.
-    revert h.
-    eassert (h := yop' (B := hom b1 b2)
-                       (fun i : I => existT _ i (i1 i, i2 i) )
-            ).
-    apply  h.
-Defined.
 
 Section contractible.
 Context (TX : GSet)(X : GSet_on TX).
@@ -492,11 +392,6 @@ Section nouveau_principe.
   Defined.
   End nouveau_principe.
 
-CoInductive GSet_on_on {B : GSet}(G : GSet_on B) :=
-  { ob_on_on :> forall b, G b -> Type ;
-    hom_on_on : forall a b (g1 : G a) (g2 : G b) ,
-                  ob_on_on g1 -> ob_on_on g2 ->
-                  GSet_on_on (B := hom a b)(hom_on (g := G) g1 g2) }.
 
 CoFixpoint Pi {B : GSet}{H : GSet_on B}(G : GSet_on_on H) : GSet_on B.
 refine ({| ob_on := fun b => forall (h : H b), G b h ;
