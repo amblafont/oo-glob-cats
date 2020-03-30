@@ -3,10 +3,62 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 
+Require  Coq.Vectors.Fin.
 Declare Scope GSet_scope.
 Delimit Scope GSet_scope with G.
 
 CoInductive GSet := { ob :> Type ; hom : ob -> ob -> GSet }.
+
+CoFixpoint empty_GSet : GSet := {| ob := False ; hom := fun x y => empty_GSet |} .
+Definition point : GSet := {| ob := unit ; hom := fun x y => empty_GSet |}.
+
+(* Definition GSet_if_true (prop : Type)(G : GSet) : GSet := *)
+(*   {| ob := (prop * G) ; hom := fun x y => hom (snd x)(snd y)|}. *)
+
+(* Let us make S1 *)
+CoFixpoint make_S1 (prop : Type)(availables : Type) : GSet :=
+ {| ob := (prop * (availables -> nat))%type ;
+           hom := fun x y =>
+                    make_S1 (forall a,  snd x a = snd y a) {a : availables & Fin.t (snd x a)} |} .
+
+CoInductive give_me_gsets (G : GSet) := { obg : G -> GSet ;
+                                           homg : forall (x y : G), give_me_gsets (hom x y)}.
+
+Fixpoint make_list (A : Type)(n : nat)(a : A) : list A :=
+  match n with
+    0 => nil
+  | S n => a :: make_list n a
+  end.
+
+CoFixpoint make_S1_to_GSet (prop : Type)(availables : Type)
+           (mk_gsets :  (availables -> list GSet) -> GSet)
+   : give_me_gsets (make_S1 prop availables).
+refine {| obg := fun x => mk_gsets (fun a => make_list (snd (x : make_S1 prop availables) a) point) ;
+          homg := fun x y => _ |}.
+cbn.
+apply make_S1_to_GSet.
+cbn in x,y.
+intros gs.
+(* en fait, je devrais avoir un truc du genre list^n GSet -> GSetm en fait il suffit d'avoir list GSet -> list GSet *)
+apply (mk_gsets ).
+intro a.
+(*
+apply (mk_gsets (snd x)).
+intros a p.
+            mk_gsets (fun _ => point) |}.
+*)
+Abort.
+
+Definition S1_plus := make_S1 unit unit.
+
+(* GSet indexed on another *)
+
+CoInductive GSet_on (G : GSet) :=
+  { ob_on :> G -> Type ; hom_on : forall a b, ob_on a -> ob_on b -> GSet_on (hom a b) }.
+
+Definition collection := GSet_on S1.
+
+Definition prod_coll (a b : collection) : collection.
 
 CoInductive GSet_Mor (G H : GSet) :=
   { ob_mor :> G -> H ;
@@ -71,10 +123,6 @@ Existing Instance id_compS.
 
 
 
-(* GSet indexed on another *)
-
-CoInductive GSet_on (G : GSet) :=
-  { ob_on :> G -> Type ; hom_on : forall a b, ob_on a -> ob_on b -> GSet_on (hom a b) }.
 
 CoInductive GSet_on_Mor {G1 : GSet}{G2 : GSet}
             (ff : GSet_Mor G1 G2)
